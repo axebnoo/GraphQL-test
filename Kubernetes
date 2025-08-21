@@ -1,0 +1,76 @@
+using GraphQL;
+using GraphQL.Types;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace dashboard_api.Models.Kubernetes
+{
+    public class KubernetesMetric
+    {
+        public string Id { get; set; }
+        public string lastvalue { get; set; }
+    }
+
+    public class KubernetesMetricType : ObjectGraphType<KubernetesMetric>
+    {
+        public KubernetesMetricType()
+        {
+            Field(x => x.Id);
+            Field(x => x.lastvalue);
+        }
+    }
+
+    public interface IKubernetesService
+    {
+        List<KubernetesMetric> GetMetrics(string metric, List<int> itemIds);
+    }
+
+    public class KubernetesService : IKubernetesService
+    {
+        public List<KubernetesMetric> GetMetrics(string metric, List<int> itemIds)
+        {
+            // Dummy data: in a real scenario, this would be fetched based on `metric`
+            var allMetrics = new List<KubernetesMetric>
+            {
+                new KubernetesMetric { Id = "1233", lastvalue = "Running" },
+                new KubernetesMetric { Id = "23423",lastvalue = "Pending" },
+                new KubernetesMetric { Id = "9999", lastvalue = "Failed" },
+                new KubernetesMetric { Id = "8888", lastvalue = "CrashLoopBackOff" },
+            };
+
+            // Filter only by provided itemIds (converted to string to match Id)
+            return allMetrics
+                .Where(m => itemIds.Select(id => id.ToString()).Contains(m.Id))
+                .ToList();
+        }
+    }
+
+    public class KubernetesQuery : ObjectGraphType
+    {
+        public KubernetesQuery(IKubernetesService service)
+        {
+            Field<ListGraphType<KubernetesMetricType>>(
+                name: "kubernetes", // use lowercase for standard query naming
+                arguments: new QueryArguments(
+                    new QueryArgument<NonNullGraphType<StringGraphType>> { Name = "metric" },
+                    new QueryArgument<ListGraphType<NonNullGraphType<IntGraphType>>> { Name = "itemids" }
+                ),
+                resolve: context =>
+                {
+                    var metric = context.GetArgument<string>("metric");
+                    var itemIds = context.GetArgument<List<int>>("itemids");
+                    return service.GetMetrics(metric, itemIds);
+                }
+            );
+        }
+    }
+
+    public class KubernetesSchema : Schema
+    {
+        public KubernetesSchema(IServiceProvider provider) : base(provider)
+        {
+            Query = provider.GetRequiredService<KubernetesQuery>();
+        }
+    }
+}
