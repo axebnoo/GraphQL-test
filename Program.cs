@@ -1,4 +1,4 @@
-//GraphQL.Server.All
+//GraphQL.Server.All 8.3.0
 
 using GraphQL;
 using GraphQL.Types;
